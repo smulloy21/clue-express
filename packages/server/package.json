@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@types/connect-pg-simple": "^7.0.3",
-    "@types/express": "^5.0.0",
+    "@types/express": "^5.0.6",
     "@types/express-session": "^1.19.0",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.21.0",

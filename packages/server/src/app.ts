@@ -1,10 +1,16 @@
 import express, { type Express, type RequestHandler } from "express";
 import { createAuthRouter } from "./auth/routes.js";
+import { createGameRouter } from "./games/routes.js";
+import { createRecordsRouter } from "./records/routes.js";
+import type { GameRecordRepository } from "./repositories/gameRecordRepository.js";
+import type { GameRepository } from "./repositories/gameRepository.js";
 import type { UserRepository } from "./repositories/userRepository.js";
 
 export interface AppDependencies {
   sessionMiddleware: RequestHandler;
   userRepository: UserRepository;
+  gameRepository: GameRepository;
+  gameRecordRepository: GameRecordRepository;
 }
 
 export function createApp(deps: AppDependencies): Express {
@@ -22,6 +28,14 @@ export function createApp(deps: AppDependencies): Express {
   });
 
   app.use("/api/auth", createAuthRouter(deps.userRepository));
+  app.use(
+    "/api/games",
+    createGameRouter({
+      gameRepository: deps.gameRepository,
+      gameRecordRepository: deps.gameRecordRepository,
+    }),
+  );
+  app.use("/api/records", createRecordsRouter(deps.gameRecordRepository));
 
   return app;
 }

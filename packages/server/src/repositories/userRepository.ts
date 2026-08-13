@@ -1,3 +1,5 @@
+import type { Queryable } from "../db/queryable.js";
+
 export interface UserRecord {
   id: string;
   username: string;
@@ -10,11 +12,6 @@ interface UserRow {
   username: string;
   password_hash: string;
   created_at: Date;
-}
-
-/** The subset of `pg.Pool`'s query API the repository needs — kept narrow for testability. */
-export interface Queryable {
-  query<T>(text: string, params?: unknown[]): Promise<{ rows: T[] }>;
 }
 
 /** Thrown when inserting a username that already exists (mirrors Postgres's unique_violation, 23505). */

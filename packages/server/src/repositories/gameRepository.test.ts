@@ -1,27 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { createFakeGameCollection as fakeCollection } from "../testSupport/fakeGameCollection.js";
 import type { GameDocument } from "./gameDocument.js";
-import { createGameRepository, type GameCollection } from "./gameRepository.js";
-
-function fakeCollection(initial: GameDocument[] = []): GameCollection {
-  const docs = new Map(initial.map((d) => [d._id, d]));
-  return {
-    findOne: async (filter) => docs.get(filter._id) ?? null,
-    replaceOne: async (filter, doc) => {
-      docs.set(filter._id, doc);
-      return { acknowledged: true };
-    },
-  };
-}
+import { createGameRepository } from "./gameRepository.js";
 
 function makeDoc(overrides: Partial<GameDocument> = {}): GameDocument {
   return {
     _id: "game-1",
     userId: null,
+    ownerSessionId: "session-1",
     status: "in_progress",
     seed: 1,
     solution: { suspect: "Miss Scarlet", weapon: "Candlestick", room: "Kitchen" },
     players: [],
     turn: { currentSeat: 0, phase: "guess" },
+    winnerSeat: null,
     events: [],
     createdAt: new Date("2024-01-01T00:00:00Z"),
     updatedAt: new Date("2024-01-01T00:00:00Z"),
@@ -101,6 +93,29 @@ describe("createGameRepository", () => {
       await expect(repo.applyAction("missing", (current) => current)).rejects.toThrow(
         /no game found/,
       );
+    });
+  });
+
+  describe("abandonInProgressGamesForSession", () => {
+    it("marks only that session's in-progress games as abandoned", async () => {
+      const mine = makeDoc({ _id: "mine", ownerSessionId: "session-1", status: "in_progress" });
+      const someoneElses = makeDoc({
+        _id: "theirs",
+        ownerSessionId: "session-2",
+        status: "in_progress",
+      });
+      const alreadyFinished = makeDoc({
+        _id: "old",
+        ownerSessionId: "session-1",
+        status: "finished",
+      });
+      const repo = createGameRepository(fakeCollection([mine, someoneElses, alreadyFinished]));
+
+      await repo.abandonInProgressGamesForSession("session-1");
+
+      expect((await repo.load("mine"))?.status).toBe("abandoned");
+      expect((await repo.load("theirs"))?.status).toBe("in_progress");
+      expect((await repo.load("old"))?.status).toBe("finished");
     });
   });
 });
