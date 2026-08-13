@@ -56,3 +56,9 @@ export function isWeapon(name: string): name is Weapon {
 export function isRoom(name: string): name is Room {
   return ROOM_SET.has(name);
 }
+
+export function categoryOfCard(name: CardName): Category {
+  if (isSuspect(name)) return "suspect";
+  if (isWeapon(name)) return "weapon";
+  return "room";
+}

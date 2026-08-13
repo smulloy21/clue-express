@@ -4,6 +4,7 @@ export {
   ROOMS,
   SUSPECTS,
   WEAPONS,
+  categoryOfCard,
   isRoom,
   isSuspect,
   isWeapon,
@@ -55,3 +56,31 @@ export {
   type RedactedPlayer,
   type RedactedTurnState,
 } from "./redact.js";
+
+export {
+  createBotAgent,
+  decideAccusation,
+  decideDisproval,
+  decideGuess,
+  observeEvent,
+  type BotAgentState,
+  type CreateBotAgentOptions,
+} from "./bots/agent.js";
+
+export {
+  createKnowledge,
+  getBelief,
+  getKnownSolution,
+  isConfirmed,
+  recordDisjunction,
+  recordNo,
+  recordYes,
+  unconfirmedCardsInCategory,
+  type Belief,
+  type Disjunction,
+  type Holder,
+  type KnowledgeState,
+} from "./bots/knowledge.js";
+
+export { playOneGame, type SimulatedGameResult } from "./simulate/runGame.js";
+export { summarize, type SimulationSummary } from "./simulate/stats.js";
