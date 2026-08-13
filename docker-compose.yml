@@ -7,7 +7,9 @@ services:
       POSTGRES_PASSWORD: clue
       POSTGRES_DB: clue
     ports:
-      - "5432:5432"
+      # Published on 5433 (not the standard 5432) to avoid clashing with a locally
+      # installed Postgres. Inside the Docker network it's still the standard 5432.
+      - "5433:5432"
     volumes:
       - clue_postgres_data:/var/lib/postgresql/data
     healthcheck:

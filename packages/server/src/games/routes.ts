@@ -18,8 +18,15 @@ import type {
 } from "../repositories/gameRecordRepository.js";
 import type { GameRepository } from "../repositories/gameRepository.js";
 import { resolveBotTurns } from "./botOrchestration.js";
+import { dailySeed } from "./dailySeed.js";
 import { applyStateToDocument, toEngineState } from "./mapping.js";
-import { accusationSchema, createGameSchema, disproveSchema, guessSchema } from "./validation.js";
+import {
+  accusationSchema,
+  createGameSchema,
+  disproveSchema,
+  guessSchema,
+  sinceQuerySchema,
+} from "./validation.js";
 
 export interface GameRoutesDependencies {
   gameRepository: GameRepository;
@@ -87,7 +94,7 @@ export function createGameRouter(deps: GameRoutesDependencies): Router {
         res.status(400).json({ error: "validation", issues: result.error.issues });
         return;
       }
-      const { botDifficulties } = result.data;
+      const { botDifficulties, daily } = result.data;
 
       await gameRepository.abandonInProgressGamesForSession(req.sessionID);
 
@@ -96,7 +103,7 @@ export function createGameRouter(deps: GameRoutesDependencies): Router {
         { type: "bot", difficulty: botDifficulties[0] },
         { type: "bot", difficulty: botDifficulties[1] },
       ];
-      const seed = randomInt(0, 2 ** 31 - 1);
+      const seed = daily ? dailySeed() : randomInt(0, 2 ** 31 - 1);
       const initialState = createGame({ seed, players });
       const humanSeat = findHumanSeat(initialState.players);
 
@@ -135,6 +142,13 @@ export function createGameRouter(deps: GameRoutesDependencies): Router {
 
   router.get("/:id/state", async (req, res, next) => {
     try {
+      const sinceRaw = typeof req.query.since === "string" ? req.query.since : undefined;
+      const sinceResult = sinceQuerySchema.safeParse(sinceRaw);
+      if (!sinceResult.success) {
+        res.status(400).json({ error: "validation", issues: sinceResult.error.issues });
+        return;
+      }
+
       const doc = await loadOwnedActiveGame(req.params.id!, req.sessionID);
       if (!doc) {
         res.status(404).json({ error: "game_not_found" });
@@ -143,9 +157,7 @@ export function createGameRouter(deps: GameRoutesDependencies): Router {
       const humanSeat = findHumanSeat(doc.players);
       const redacted = redactStateForPlayer(toEngineState(doc), humanSeat);
 
-      const sinceRaw = req.query.since;
-      const since = typeof sinceRaw === "string" && sinceRaw.length > 0 ? Number(sinceRaw) : -1;
-      const events = redacted.events.filter((e) => e.index > since);
+      const events = redacted.events.filter((e) => e.index > sinceResult.data);
 
       res.status(200).json({ redactedState: redacted, events });
     } catch (error) {

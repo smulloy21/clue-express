@@ -74,6 +74,43 @@ describe("POST /api/games", () => {
     expect(own.hand).toHaveLength(6);
   });
 
+  it("gives two different sessions the identical deal when both play the daily challenge", async () => {
+    const { app, gameRepository } = createTestApp();
+
+    const agentA = request.agent(app);
+    await agentA.post("/api/auth/guest");
+    const gameA = await agentA
+      .post("/api/games")
+      .send({ botDifficulties: ["easy", "hard"], daily: true });
+
+    const agentB = request.agent(app);
+    await agentB.post("/api/auth/guest");
+    const gameB = await agentB
+      .post("/api/games")
+      .send({ botDifficulties: ["easy", "hard"], daily: true });
+
+    const docA = await gameRepository.load(gameA.body.gameId);
+    const docB = await gameRepository.load(gameB.body.gameId);
+
+    expect(docA?.seed).toBe(docB?.seed);
+    expect(docA?.solution).toEqual(docB?.solution);
+    expect(docA?.players.map((p) => p.hand)).toEqual(docB?.players.map((p) => p.hand));
+  });
+
+  it("gives two non-daily games different seeds", async () => {
+    const { app, gameRepository } = createTestApp();
+    const agent = request.agent(app);
+    await agent.post("/api/auth/guest");
+
+    const gameA = await agent.post("/api/games").send({ botDifficulties: ["easy", "hard"] });
+    const gameB = await agent.post("/api/games").send({ botDifficulties: ["easy", "hard"] });
+
+    const docA = await gameRepository.load(gameA.body.gameId);
+    const docB = await gameRepository.load(gameB.body.gameId);
+
+    expect(docA?.seed).not.toBe(docB?.seed);
+  });
+
   it("rejects malformed botDifficulties", async () => {
     const { app } = createTestApp();
     const agent = request.agent(app);
@@ -117,6 +154,45 @@ describe("GET /api/games/:id/state", () => {
 
     const res = await agent.get("/api/games/does-not-exist/state");
     expect(res.status).toBe(404);
+  });
+
+  it("only returns events after the given index", async () => {
+    const { app } = createTestApp();
+    const agent = request.agent(app);
+    await agent.post("/api/auth/guest");
+    const created = await agent.post("/api/games").send({ botDifficulties: ["easy", "easy"] });
+    const gameId = created.body.gameId as string;
+
+    const all = await agent.get(`/api/games/${gameId}/state`);
+    const totalEvents = all.body.events.length;
+
+    const sinceZero = await agent.get(`/api/games/${gameId}/state?since=0`);
+    expect(sinceZero.body.events).toEqual(
+      all.body.events.filter((e: { index: number }) => e.index > 0),
+    );
+
+    const sinceAll = await agent.get(`/api/games/${gameId}/state?since=${totalEvents - 1}`);
+    expect(sinceAll.body.events.length).toBeLessThanOrEqual(1);
+  });
+
+  it("rejects a non-numeric since parameter", async () => {
+    const { app } = createTestApp();
+    const agent = request.agent(app);
+    await agent.post("/api/auth/guest");
+    const created = await agent.post("/api/games").send({ botDifficulties: ["easy", "easy"] });
+
+    const res = await agent.get(`/api/games/${created.body.gameId}/state?since=not-a-number`);
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a negative since parameter below -1", async () => {
+    const { app } = createTestApp();
+    const agent = request.agent(app);
+    await agent.post("/api/auth/guest");
+    const created = await agent.post("/api/games").send({ botDifficulties: ["easy", "easy"] });
+
+    const res = await agent.get(`/api/games/${created.body.gameId}/state?since=-5`);
+    expect(res.status).toBe(400);
   });
 });
 
