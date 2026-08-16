@@ -1,4 +1,4 @@
-# Boardless Clue — Project Specification (v1)
+# Clue Express — Project Specification (v1)
 
 A single-player, boardless deduction game based on classic Clue/Cluedo, played in the browser against two AI bots. Node/Express + TypeScript backend, React frontend, PostgreSQL for accounts and game records, MongoDB for live game state.
 

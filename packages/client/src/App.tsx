@@ -55,7 +55,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Boardless Clue</h1>
+        <h1>Clue Express</h1>
         {auth.status !== "loading" && auth.status !== "anonymous" && (
           <span className="identity">{auth.status === "guest" ? "Guest" : auth.username}</span>
         )}

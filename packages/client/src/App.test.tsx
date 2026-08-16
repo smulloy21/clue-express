@@ -32,7 +32,7 @@ describe("App", () => {
   it("shows the landing screen once resolved as anonymous", async () => {
     vi.spyOn(api, "getMe").mockResolvedValue({ authenticated: false });
     render(<App />);
-    expect(await screen.findByText("Boardless Clue")).toBeInTheDocument();
+    expect(await screen.findByText("Clue Express")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Play as guest" })).toBeInTheDocument();
   });
 

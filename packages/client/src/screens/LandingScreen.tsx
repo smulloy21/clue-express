@@ -28,7 +28,7 @@ export function LandingScreen({ initialMode = "login", onCancel }: LandingScreen
   return (
     <div className="screen">
       <div className="panel stack">
-        <h2>Boardless Clue</h2>
+        <h2>Clue Express</h2>
         <p className="muted">Play a deduction game against two AI opponents.</p>
 
         <form className="stack" onSubmit={handleSubmit}>

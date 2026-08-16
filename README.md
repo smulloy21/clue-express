@@ -1,4 +1,4 @@
-# Boardless Clue
+# Clue Express
 
 A single-player, boardless deduction game based on classic Clue/Cluedo, played in the browser
 against two AI bots. Node/Express + TypeScript backend, React frontend, PostgreSQL for accounts
