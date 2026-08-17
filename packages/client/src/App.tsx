@@ -4,8 +4,11 @@ import { GameTableScreen } from "./screens/GameTableScreen.js";
 import { LandingScreen } from "./screens/LandingScreen.js";
 import { NewGameScreen } from "./screens/NewGameScreen.js";
 import { RecordsScreen } from "./screens/RecordsScreen.js";
+import { computeRevealState } from "./game/turns.js";
 import { useAuthStore } from "./store/authStore.js";
+import { useBotNameStore } from "./store/botNameStore.js";
 import { useGameStore } from "./store/gameStore.js";
+import { useNotepadStore } from "./store/notepadStore.js";
 
 type View = "new-game" | "records" | "signup-prompt";
 
@@ -13,7 +16,9 @@ export function App() {
   const auth = useAuthStore((s) => s.auth);
   const checkAuth = useAuthStore((s) => s.checkAuth);
   const gameState = useGameStore((s) => s.state);
-  const isRevealing = useGameStore((s) => s.isRevealing);
+  const revealedTurnCount = useNotepadStore((s) => s.revealedTurnCount);
+  const resetNotepad = useNotepadStore((s) => s.reset);
+  const resetBotNames = useBotNameStore((s) => s.reset);
   const [view, setView] = useState<View>("new-game");
 
   useEffect(() => {
@@ -26,6 +31,13 @@ export function App() {
     }
   }, [auth.status]);
 
+  useEffect(() => {
+    if (!gameState) {
+      resetNotepad();
+      resetBotNames();
+    }
+  }, [gameState, resetNotepad, resetBotNames]);
+
   let body: React.ReactNode;
   if (auth.status === "loading") {
     body = <p className="muted">Loading…</p>;
@@ -37,8 +49,9 @@ export function App() {
         <LandingScreen initialMode="login" />
       );
   } else if (gameState) {
+    const { isCaughtUp } = computeRevealState(gameState.events, revealedTurnCount);
     body =
-      gameState.status === "finished" && !isRevealing ? (
+      gameState.status === "finished" && isCaughtUp ? (
         <GameOverScreen
           onPlayAgain={() => setView("new-game")}
           onSignUp={() => setView("signup-prompt")}

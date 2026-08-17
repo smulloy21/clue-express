@@ -28,8 +28,22 @@ function toAuthState(me: api.MeResponse): AuthState {
   return { status: "authenticated", id: me.id!, username: me.username! };
 }
 
+function formatRetryAfter(seconds: number): string {
+  if (seconds < 60) {
+    const whole = Math.ceil(seconds);
+    return `${whole} second${whole === 1 ? "" : "s"}`;
+  }
+  const minutes = Math.ceil(seconds / 60);
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
 function describeError(err: unknown): string {
   if (err instanceof api.ApiError) {
+    if (err.status === 429) {
+      return err.retryAfterSeconds !== undefined
+        ? `Too many attempts. Please try again in ${formatRetryAfter(err.retryAfterSeconds)}.`
+        : "Too many attempts. Please try again later.";
+    }
     switch (err.message) {
       case "username_taken":
         return "That username is already taken.";
@@ -53,8 +67,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       const me = await api.getMe();
       set({ auth: toAuthState(me) });
-    } catch {
-      set({ auth: { status: "anonymous" } });
+    } catch (err) {
+      const isRateLimited = err instanceof api.ApiError && err.status === 429;
+      set({ auth: { status: "anonymous" }, error: isRateLimited ? describeError(err) : null });
     }
   },
 

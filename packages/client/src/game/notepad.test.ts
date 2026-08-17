@@ -1,6 +1,6 @@
-import { ROOMS, SUSPECTS, WEAPONS, type RedactedGameEvent } from "@clue/engine";
+import { ROOMS, SUSPECTS, WEAPONS, getBelief, type RedactedGameEvent } from "@clue/engine";
 import { describe, expect, it } from "vitest";
-import { computeNotepadRows } from "./notepad.js";
+import { computeKnowledge, computeNotepadRows } from "./notepad.js";
 
 const [S0, S1, S2] = SUSPECTS;
 const [W0, W1] = WEAPONS;
@@ -52,5 +52,17 @@ describe("computeNotepadRows", () => {
       expect(row.cells[1]).not.toBe("yes");
       expect(row.cells[2]).not.toBe("yes");
     }
+  });
+});
+
+describe("computeKnowledge", () => {
+  it("underlies computeNotepadRows — its beliefs match the rendered cells", () => {
+    const events: RedactedGameEvent[] = [
+      { index: 0, type: "guess", seat: 0, guess: { suspect: S1!, weapon: W1!, room: R0! } },
+      { index: 1, type: "no_disproval", seat: 2 },
+    ];
+    const knowledge = computeKnowledge(0, [S0!], 3, events);
+    expect(getBelief(knowledge, S1!, 2)).toBe("no");
+    expect(getBelief(knowledge, S0!, 0)).toBe("yes");
   });
 });

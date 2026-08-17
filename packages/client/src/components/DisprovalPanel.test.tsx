@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api/client.js";
 import { useGameStore } from "../store/gameStore.js";
-import { DisprovalModal } from "./DisprovalModal.js";
+import { DisprovalPanel } from "./DisprovalPanel.js";
 
 function stateWithPending(): RedactedGameState {
   return {
@@ -21,19 +21,42 @@ function stateWithPending(): RedactedGameState {
       pending: { guesserSeat: 0, disproverSeat: 1, options: ["Miss Scarlet", "Knife"] },
     },
     winnerSeat: null,
-    events: [],
+    events: [
+      {
+        index: 0,
+        type: "guess",
+        seat: 0,
+        guess: { suspect: "Miss Scarlet", weapon: "Knife", room: "Kitchen" },
+      },
+    ],
   };
 }
 
-describe("DisprovalModal", () => {
+describe("DisprovalPanel", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it("renders nothing when there is no pending disproval for the viewer", () => {
     useGameStore.setState({ gameId: "g1", state: null });
-    const { container } = render(<DisprovalModal />);
+    const { container } = render(<DisprovalPanel />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders inline, not as a blocking overlay, so surrounding content stays visible", () => {
+    useGameStore.setState({ gameId: "g1", state: stateWithPending() });
+    const { container } = render(<DisprovalPanel />);
+    expect(container.querySelector(".modal-overlay")).not.toBeInTheDocument();
+    expect(container.querySelector(".disproval-panel")).toBeInTheDocument();
+  });
+
+  it("shows the full guess being disproved, for context", () => {
+    useGameStore.setState({ gameId: "g1", state: stateWithPending() });
+    render(<DisprovalPanel />);
+
+    expect(
+      screen.getByText("Bot 0 (easy) guessed Miss Scarlet, Knife, in the Kitchen."),
+    ).toBeInTheDocument();
   });
 
   it("offers exactly the pending options and submits the chosen card", async () => {
@@ -41,7 +64,7 @@ describe("DisprovalModal", () => {
       .spyOn(api, "submitDisprove")
       .mockResolvedValue({ state: stateWithPending() });
     useGameStore.setState({ gameId: "g1", state: stateWithPending() });
-    render(<DisprovalModal />);
+    render(<DisprovalPanel />);
 
     expect(screen.getByText("Miss Scarlet")).toBeInTheDocument();
     expect(screen.getByText("Knife")).toBeInTheDocument();

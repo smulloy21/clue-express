@@ -10,8 +10,10 @@ import type {
 export class ApiError extends Error {
   readonly status: number;
   readonly body: unknown;
+  /** Seconds to wait before retrying, parsed from a `Retry-After` header (e.g. on a 429). */
+  readonly retryAfterSeconds: number | undefined;
 
-  constructor(status: number, body: unknown) {
+  constructor(status: number, body: unknown, retryAfterSeconds?: number) {
     const errorCode =
       body && typeof body === "object" && "error" in body
         ? String((body as { error: unknown }).error)
@@ -19,6 +21,7 @@ export class ApiError extends Error {
     super(errorCode ?? `request failed with status ${status}`);
     this.status = status;
     this.body = body;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -36,7 +39,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
   const data: unknown = await res.json().catch(() => undefined);
   if (!res.ok) {
-    throw new ApiError(res.status, data);
+    const retryAfterHeader = res.headers.get("Retry-After");
+    const retryAfter = retryAfterHeader !== null ? Number(retryAfterHeader) : undefined;
+    throw new ApiError(
+      res.status,
+      data,
+      retryAfter !== undefined && Number.isFinite(retryAfter) ? retryAfter : undefined,
+    );
   }
   return data as T;
 }

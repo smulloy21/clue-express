@@ -38,10 +38,18 @@ describe("authStore", () => {
     });
   });
 
-  it("checkAuth falls back to anonymous on network failure", async () => {
+  it("checkAuth falls back to anonymous on network failure, with no error surfaced", async () => {
     vi.spyOn(api, "getMe").mockRejectedValue(new Error("network down"));
     await useAuthStore.getState().checkAuth();
     expect(useAuthStore.getState().auth).toEqual({ status: "anonymous" });
+    expect(useAuthStore.getState().error).toBeNull();
+  });
+
+  it("checkAuth surfaces a friendly message when rate-limited, instead of failing silently", async () => {
+    vi.spyOn(api, "getMe").mockRejectedValue(new api.ApiError(429, undefined, 191));
+    await useAuthStore.getState().checkAuth();
+    expect(useAuthStore.getState().auth).toEqual({ status: "anonymous" });
+    expect(useAuthStore.getState().error).toBe("Too many attempts. Please try again in 4 minutes.");
   });
 
   it("login sets authenticated state on success", async () => {
@@ -70,6 +78,22 @@ describe("authStore", () => {
     const ok = await useAuthStore.getState().signup("alice", "correct-horse-battery");
     expect(ok).toBe(false);
     expect(useAuthStore.getState().error).toBe("That username is already taken.");
+  });
+
+  it("shows how long to wait when rate-limited, using the Retry-After seconds", async () => {
+    vi.spyOn(api, "login").mockRejectedValue(new api.ApiError(429, undefined, 45));
+    const ok = await useAuthStore.getState().login("alice", "wrong");
+    expect(ok).toBe(false);
+    expect(useAuthStore.getState().error).toBe(
+      "Too many attempts. Please try again in 45 seconds.",
+    );
+  });
+
+  it("falls back to a generic rate-limit message when Retry-After is missing", async () => {
+    vi.spyOn(api, "playAsGuest").mockRejectedValue(new api.ApiError(429, undefined));
+    const ok = await useAuthStore.getState().playAsGuest();
+    expect(ok).toBe(false);
+    expect(useAuthStore.getState().error).toBe("Too many attempts. Please try again later.");
   });
 
   it("playAsGuest sets guest state", async () => {

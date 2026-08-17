@@ -1,13 +1,46 @@
-import type { RedactedGameEvent, RedactedPlayer } from "@clue/engine";
+import { categoryOfCard, type RedactedGameEvent, type RedactedPlayer } from "@clue/engine";
 
-export function playerLabel(player: RedactedPlayer, viewerSeat: number): string {
+/** A player decorated with its assigned nickname, when one exists (bots only). */
+export interface DisplayPlayer extends RedactedPlayer {
+  nickname?: string;
+}
+
+export function playerLabel(player: DisplayPlayer, viewerSeat: number): string {
   if (player.seat === viewerSeat) {
     return "You";
   }
   if (player.type === "human") {
     return `Player ${player.seat}`;
   }
-  return `Bot ${player.seat} (${player.difficulty})`;
+  return `${player.nickname ?? `Bot ${player.seat}`} (${player.difficulty})`;
+}
+
+/** Attaches each bot's assigned nickname (if any) for display purposes only. */
+export function withNicknames(
+  players: readonly RedactedPlayer[],
+  nicknames: Record<number, string>,
+): DisplayPlayer[] {
+  return players.map((p) => {
+    const nickname = nicknames[p.seat];
+    return nickname ? { ...p, nickname } : p;
+  });
+}
+
+/**
+ * Notepad columns always show the viewer first, then the remaining players in turn order
+ * (clockwise from the viewer's own seat) — so reading left to right matches who goes next.
+ */
+export function orderPlayersForColumns(
+  players: readonly RedactedPlayer[],
+  ownSeat: number,
+): RedactedPlayer[] {
+  const own = players.find((p) => p.seat === ownSeat);
+  const playerCount = players.length;
+  const turnsAfterOwn = (seat: number) => (seat - ownSeat + playerCount) % playerCount;
+  const others = players
+    .filter((p) => p.seat !== ownSeat)
+    .sort((a, b) => turnsAfterOwn(a.seat) - turnsAfterOwn(b.seat));
+  return own ? [own, ...others] : others;
 }
 
 function findPlayer(players: readonly RedactedPlayer[], seat: number): RedactedPlayer {
@@ -46,7 +79,9 @@ export function describeEvent(
       return `${label(event.seat)} could not disprove.`;
     case "disprove":
       return event.card !== undefined
-        ? `${label(event.disproverSeat)} showed ${label(event.guesserSeat)} the ${event.card}.`
+        ? `${label(event.disproverSeat)} showed ${label(event.guesserSeat)} ${
+            categoryOfCard(event.card) === "suspect" ? "" : "the "
+          }${event.card}.`
         : `${label(event.disproverSeat)} disproved ${label(event.guesserSeat)}'s guess.`;
     case "pass":
       return `${label(event.seat)} passed.`;

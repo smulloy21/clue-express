@@ -1,22 +1,17 @@
+import type { RedactedGameEvent } from "@clue/engine";
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "./api/client.js";
 import { App } from "./App.js";
 import { useAuthStore } from "./store/authStore.js";
 import { useGameStore } from "./store/gameStore.js";
+import { useNotepadStore } from "./store/notepadStore.js";
 
 describe("App", () => {
   beforeEach(() => {
     useAuthStore.setState({ auth: { status: "loading" }, error: null, isSubmitting: false });
-    useGameStore.setState({
-      gameId: null,
-      state: null,
-      visibleEventCount: 0,
-      isRevealing: false,
-      isSubmitting: false,
-      actionError: null,
-      revealToken: 0,
-    });
+    useGameStore.setState({ gameId: null, state: null, isSubmitting: false, actionError: null });
+    useNotepadStore.getState().reset();
   });
 
   afterEach(() => {
@@ -74,9 +69,61 @@ describe("App", () => {
         winnerSeat: null,
         events: [],
       },
-      isRevealing: false,
     });
 
     expect(await screen.findByText("Your hand")).toBeInTheDocument();
+  });
+
+  it("keeps showing the game table on a finished game until the final turn's backlog is caught up", async () => {
+    vi.spyOn(api, "getMe").mockResolvedValue({ authenticated: true, guest: true });
+    render(<App />);
+    await screen.findByText("New game");
+
+    const events: RedactedGameEvent[] = [
+      {
+        index: 0,
+        type: "guess",
+        seat: 0,
+        guess: { suspect: "Miss Scarlet", weapon: "Knife", room: "Kitchen" },
+      },
+      {
+        index: 1,
+        type: "accusation",
+        seat: 0,
+        accusation: { suspect: "Miss Scarlet", weapon: "Knife", room: "Kitchen" },
+        correct: true,
+      },
+      {
+        index: 2,
+        type: "game_over",
+        winnerSeat: 0,
+        reason: "correct_accusation",
+        solution: { suspect: "Miss Scarlet", weapon: "Knife", room: "Kitchen" },
+      },
+    ];
+    useGameStore.setState({
+      gameId: "g1",
+      state: {
+        viewerSeat: 0,
+        status: "finished",
+        solution: { suspect: "Miss Scarlet", weapon: "Knife", room: "Kitchen" },
+        players: [
+          { seat: 0, type: "human", eliminated: false, handSize: 6, hand: ["Miss Scarlet"] },
+          { seat: 1, type: "bot", difficulty: "easy", eliminated: false, handSize: 6 },
+          { seat: 2, type: "bot", difficulty: "easy", eliminated: false, handSize: 6 },
+        ],
+        turn: { currentSeat: 0, phase: "accuse_or_pass" },
+        winnerSeat: 0,
+        events,
+      },
+    });
+
+    // Not yet caught up (revealedTurnCount defaults to 0) — the table, not the result, shows.
+    expect(await screen.findByText("Your hand")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Game over" })).not.toBeInTheDocument();
+
+    useNotepadStore.setState({ revealedTurnCount: 1 });
+
+    expect(await screen.findByRole("heading", { name: "Game over" })).toBeInTheDocument();
   });
 });

@@ -82,6 +82,26 @@ describe("api client", () => {
     });
   });
 
+  it("captures the Retry-After header (in seconds) on a 429 response", async () => {
+    fetchMock.mockResolvedValue(
+      new Response("Too many requests, please try again later.", {
+        status: 429,
+        headers: { "Retry-After": "191" },
+      }),
+    );
+
+    await expect(playAsGuest()).rejects.toMatchObject({ status: 429, retryAfterSeconds: 191 });
+  });
+
+  it("leaves retryAfterSeconds undefined when there's no Retry-After header", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(500, { error: "internal" }));
+
+    await expect(playAsGuest()).rejects.toMatchObject({
+      status: 500,
+      retryAfterSeconds: undefined,
+    });
+  });
+
   it("ApiError is an instance check-able error", async () => {
     fetchMock.mockResolvedValue(jsonResponse(401, { error: "invalid_credentials" }));
     try {

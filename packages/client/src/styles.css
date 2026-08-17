@@ -3,6 +3,7 @@
   --surface: #1c2128;
   --surface-raised: #242a33;
   --border: #333b47;
+  --border-strong: #4d5259;
   --text: #e6e9ef;
   --text-muted: #9aa4b2;
   --accent: #c9a24b;
@@ -183,7 +184,8 @@ select {
   font-size: 0.85rem;
 }
 
-.card-chip .category-dot {
+.category-dot {
+  display: inline-block;
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
@@ -209,7 +211,7 @@ select {
   max-height: 320px;
   overflow-y: auto;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   gap: 0.5rem;
   padding-right: 0.25rem;
 }
@@ -224,6 +226,12 @@ select {
   border-left-color: var(--accent);
 }
 
+.event-entry.turn-boundary {
+  border-top: 1px solid var(--border);
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+}
+
 .notepad-scroll {
   overflow-x: auto;
 }
@@ -232,6 +240,7 @@ table.notepad {
   border-collapse: collapse;
   width: 100%;
   font-size: 0.82rem;
+  border: 2px solid var(--border-strong);
 }
 
 table.notepad th,
@@ -242,6 +251,11 @@ table.notepad td {
   white-space: nowrap;
 }
 
+table.notepad thead th {
+  border-width: 2px;
+  border-color: var(--border-strong);
+}
+
 table.notepad th {
   color: var(--text-muted);
   font-weight: 500;
@@ -250,6 +264,16 @@ table.notepad th {
 table.notepad td.card-name {
   text-align: left;
   color: var(--text);
+}
+
+.notepad-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+table.notepad tr.category-boundary td {
+  border-top: 2px solid var(--border-strong);
 }
 
 .belief-yes {
@@ -263,6 +287,41 @@ table.notepad td.card-name {
 
 .belief-unknown {
   color: var(--unknown);
+}
+
+.notepad-cell {
+  width: 100%;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+}
+
+.notepad-cell:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.turn-pause-panel {
+  border-color: var(--accent);
+}
+
+.turn-pause-panel h4 {
+  margin: 0 0 0.3rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.turn-pause-panel .explanation ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.disproval-panel {
+  border-color: var(--accent);
 }
 
 .modal-overlay {
@@ -283,6 +342,40 @@ table.notepad td.card-name {
   padding: 1.5rem;
   max-width: 420px;
   width: 100%;
+}
+
+.modal-box.how-to-play {
+  max-width: 560px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.how-to-play h4 {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+}
+
+.how-to-play p {
+  margin: 0;
+}
+
+.how-to-play .row {
+  position: sticky;
+  bottom: -1.5rem;
+  margin: 0.25rem -1.5rem -1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.daily-toggle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.daily-toggle input[type="checkbox"] {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .turn-banner {

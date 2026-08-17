@@ -1,6 +1,7 @@
 import { CardChip } from "../components/CardChip.js";
-import { playerLabel } from "../game/format.js";
+import { playerLabel, withNicknames } from "../game/format.js";
 import { useAuthStore } from "../store/authStore.js";
+import { useBotNameStore } from "../store/botNameStore.js";
 import { useGameStore } from "../store/gameStore.js";
 
 interface GameOverScreenProps {
@@ -12,6 +13,7 @@ export function GameOverScreen({ onPlayAgain, onSignUp }: GameOverScreenProps) {
   const state = useGameStore((s) => s.state);
   const reset = useGameStore((s) => s.reset);
   const auth = useAuthStore((s) => s.auth);
+  const nicknames = useBotNameStore((s) => s.nicknames);
 
   if (!state || state.status !== "finished" || !state.solution) {
     return null;
@@ -20,7 +22,8 @@ export function GameOverScreen({ onPlayAgain, onSignUp }: GameOverScreenProps) {
   const viewerSeat = state.viewerSeat;
   const youWon = state.winnerSeat === viewerSeat;
   const someoneWon = state.winnerSeat !== null;
-  const winner = someoneWon ? state.players.find((p) => p.seat === state.winnerSeat) : undefined;
+  const displayPlayers = withNicknames(state.players, nicknames);
+  const winner = someoneWon ? displayPlayers.find((p) => p.seat === state.winnerSeat) : undefined;
 
   function handlePlayAgain(): void {
     reset();

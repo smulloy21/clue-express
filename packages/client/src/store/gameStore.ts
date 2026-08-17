@@ -3,18 +3,11 @@ import { create } from "zustand";
 import * as api from "../api/client.js";
 import { useAuthStore } from "./authStore.js";
 
-const EVENT_REVEAL_DELAY_MS = 500;
-
 interface GameStore {
   gameId: string | null;
   state: RedactedGameState | null;
-  /** How many of `state.events` have been "revealed" so far, for paced playback. */
-  visibleEventCount: number;
-  isRevealing: boolean;
   isSubmitting: boolean;
   actionError: string | null;
-  /** Bumped on every new state so an in-flight reveal loop from a stale state can stop itself. */
-  revealToken: number;
 
   startGame: (botDifficulties: [BotDifficulty, BotDifficulty], daily?: boolean) => Promise<boolean>;
   guess: (guess: Guess) => Promise<void>;
@@ -53,51 +46,13 @@ function isStaleGameError(err: unknown): boolean {
 }
 
 export const useGameStore = create<GameStore>((set, get) => {
-  function applyNewState(gameId: string, state: RedactedGameState): void {
-    const token = get().revealToken + 1;
-    set({
-      gameId,
-      state,
-      visibleEventCount: 0,
-      isRevealing: state.events.length > 0,
-      revealToken: token,
-    });
-    revealNext(token);
-  }
-
-  function revealNext(token: number): void {
-    const { state, visibleEventCount } = get();
-    if (!state || token !== get().revealToken) {
-      return;
-    }
-    if (visibleEventCount >= state.events.length) {
-      set({ isRevealing: false });
-      return;
-    }
-    setTimeout(() => {
-      if (token !== get().revealToken) {
-        return;
-      }
-      set((s) => ({ visibleEventCount: s.visibleEventCount + 1 }));
-      revealNext(token);
-    }, EVENT_REVEAL_DELAY_MS);
-  }
-
   function handleFailure(err: unknown): void {
     const message = describeActionError(err);
     if (err instanceof api.ApiError && err.message === "unauthenticated") {
       useAuthStore.setState({ auth: { status: "anonymous" }, error: null });
     }
     if (isStaleGameError(err)) {
-      set({
-        gameId: null,
-        state: null,
-        visibleEventCount: 0,
-        isRevealing: false,
-        isSubmitting: false,
-        actionError: message,
-        revealToken: get().revealToken + 1,
-      });
+      set({ gameId: null, state: null, isSubmitting: false, actionError: message });
     } else {
       set({ isSubmitting: false, actionError: message });
     }
@@ -111,8 +66,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     set({ isSubmitting: true, actionError: null });
     try {
       const res = await action();
-      set({ isSubmitting: false });
-      applyNewState(gameId, res.state);
+      set({ isSubmitting: false, state: res.state });
     } catch (err) {
       handleFailure(err);
     }
@@ -121,18 +75,14 @@ export const useGameStore = create<GameStore>((set, get) => {
   return {
     gameId: null,
     state: null,
-    visibleEventCount: 0,
-    isRevealing: false,
     isSubmitting: false,
     actionError: null,
-    revealToken: 0,
 
     async startGame(botDifficulties, daily) {
       set({ isSubmitting: true, actionError: null });
       try {
         const res = await api.createGame(botDifficulties, daily);
-        set({ isSubmitting: false });
-        applyNewState(res.gameId, res.state);
+        set({ isSubmitting: false, gameId: res.gameId, state: res.state });
         return true;
       } catch (err) {
         handleFailure(err);
@@ -157,15 +107,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     reset() {
-      set({
-        gameId: null,
-        state: null,
-        visibleEventCount: 0,
-        isRevealing: false,
-        isSubmitting: false,
-        actionError: null,
-        revealToken: get().revealToken + 1,
-      });
+      set({ gameId: null, state: null, isSubmitting: false, actionError: null });
     },
   };
 });
