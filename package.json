@@ -10,6 +10,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "postinstall": "npm run build --workspace=@clue/engine",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint .",
